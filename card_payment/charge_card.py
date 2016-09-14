@@ -79,45 +79,57 @@ def initiate(request):
 
 def enter_otp(request):
     
-    if request.method == 'POST':
+    # if request.method == 'POST':
+    #     data = request.POST.copy()
+    #     
+    #     flw                     = initialize_flw(api_key, merchant_key)
+    #     
+    #     verify                  = flw.card.validate(data)
+    #     verify_json             = verify.json()
+    #     
+    #     
+    # else:
+    if request.session.has_key('otptransactionidentifier'):# and request.session.has_key('verifyUsing'):
+        context = {'otpTransactionIdentifier': request.session['otptransactionidentifier'],
+                   'country': request.session['country']}
+        return render(request, 'enter_otp.html', context)
+    
+    return redirect(reverse('payment:initiate'))
+
+def transaction_result(request):
+    context = {}
+    '''Validate Transaction'''
+    if request.method == "POST":
         data = request.POST.copy()
         
-        flw                     = initialize_flw('', '')
+        flw                     = initialize_flw(api_key, merchant_key)
         
         verify                  = flw.card.validate(data)
         verify_json             = verify.json()
         
+        #otp = request.POST.get('otp')
+        response_data = verify_json['data']
         
-    else:
-        if request.session.has_key('otptransactionidentifier'):# and request.session.has_key('verifyUsing'):
-            context = {'otpTransactionIdentifier': request.session['otptransactionidentifier'],
-                       'country': request.session['country']}
-            return render(request, 'enter_otp.html', context)
+        #responseMessage = response_data['responsemessage']
+        #messages.error(request, '%s' %responseMessage)
+            
+        # '''Retrieve saved values from session'''
+        # api_key, merchant_key, verifyUsing, country, transactionReference, bvn  = retrieve_values(request)           
+        # 
+        # flw                                     = initialize_flw(api_key, merchant_key)
+        # validate                                = flw.bvn.validate(bvn, otp, transactionReference, country)
+        # validate_json                           = validate.json()
+        # 
+        # print 'validate_json: ',validate_json
         
-        return redirect(reverse('initiate'))
-
-def validation_result(request):
-    # context = {}
-    # '''Validate BVN'''
-    # if request.method == "POST":
-    #     otp = request.POST.get('otp')
-    #     
-    #     '''Retrieve saved values from session'''
-    #     api_key, merchant_key, verifyUsing, country, transactionReference, bvn  = retrieve_values(request)           
-    #     
-    #     flw                                     = initialize_flw(api_key, merchant_key)
-    #     validate                                = flw.bvn.validate(bvn, otp, transactionReference, country)
-    #     validate_json                           = validate.json()
-    #     
-    #     print 'validate_json: ',validate_json
-    #     
-    #     context.update({'data': validate_json['data']})
-    #             
-    #     # '''Clear saved values from session'''
-    #     keys_list = ['api_key', 'merchant_key', 'verifyUsing', 'country', 'transactionReference', 'bvn']
-    #     clear_values_from_session(request, keys_list)
+        context.update({'data': response_data})
+                
+        # '''Clear saved values from session'''
+        #keys_list = ['api_key', 'merchant_key', 'verifyUsing', 'country', 'transactionReference', 'bvn']
+        #clear_values_from_session(request, keys_list)
 
         
-    return render(request, 'bvn/bvn_verification_result.html', context)
-        
+        return render(request, 'result.html', context)
+    
+    return redirect(reverse('payment:initiate'))
     

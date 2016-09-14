@@ -1,11 +1,11 @@
 {% extends 'base.html' %}    
         
 {% block page_title %}
-    <title>Validate Card Payment</title>
+    <title>Flutterwave Card Payment - Enter OTP</title>
 {% endblock page_title %}
 
 {% block container_content %}
-<form class="form-signin"  method="POST" action="">
+<form class="form-signin"  method="POST" action="{% url 'payment:transaction_result' %}">
 {% csrf_token %}
   
     <h3 class="form-signin-heading text-center">Enter One Time Password (OTP)</h3>
