@@ -3,9 +3,11 @@ from flutterwave import Flutterwave
 from django.http import HttpResponse, JsonResponse
 from django.core.urlresolvers import reverse
 from django.contrib import messages
+from django.conf import settings
+import ast
 
-api_key         = "tk_HhfBSYgKZwid1E8G9yPF"
-merchant_key    = "tk_biDdQrtXvO"
+api_key         = settings.FLUTTERWAVE_API_KEY
+merchant_key    = settings.FLUTTERWAVE_MERCHANT_KEY
 
 def initialize_flw(api_key, merchant_key):    
     flw = Flutterwave(api_key, merchant_key, {"debug": True})
@@ -23,47 +25,69 @@ def clear_values_from_session(request, keys_list):
             
 def initiate(request):
     '''Verify'''
-    
     if request.method == "POST":
         print request.POST
         print 'posting to verify card'
                 
         payload = request.POST.copy()
-        payload.update({"customerID": "cust1471629671",
-                    'responseUrl': reverse('payment:initiate')})
+        payload.update({"customerID": "cust1471629671"})
         payload.pop('csrfmiddlewaretoken')
         
         bvn_or_pin = False
-        if payload['authModel'] == ('BVN' or 'PIN'):
+        if payload['authModel'] in ['BVN' or 'PIN']:
             bvn_or_pin = True
         
+        if payload['authModel'] in ['BVN', 'VBVSECURECODE']:
+            print 'getting here'
+            if payload['authModel'] in ['BVN', 'VBVSECURECODE']:
+                payload.pop('pin')
+            
+            if payload['authModel'] == 'VBVSECURECODE':
+                payload.pop('bvn')
+                
+            if payload['authModel'] == 'PIN':
+                payload.pop('bvn')
+            
+            payload.update({'responseUrl':  request.build_absolute_uri(reverse('payment:char_enter_otp'))})
+        
         flw                     = initialize_flw(api_key, merchant_key)
-        #print 'data: ',data
+        #print 'payload: ',payload
         
         verify                  = flw.card.charge(payload)
-        verify_json             = verify.json()
+        #print 'verify: ',verify
         
-        print 'verify_json: ',verify_json
+        verify_json             = verify.json()
         response_data = verify_json['data']
         
-        if response_data.has_key('responsemessage'):
-            responseMessage         = response_data['responsemessage']
-            messages.error(request, '%s' %responseMessage)
-        
-        if verify_json['status'] != 'error':
+        if payload['authModel'] == 'VBVSECURECODE':
             
-            response_data.update({'country': payload['country']})
-            print 'response_data: ',response_data
-            responsecode = response_data['responsecode']
-            if responsecode == '02':
-                keys_list = ['otptransactionidentifier', 'transactionreference', 'country']
-                keep_values(request, keys_list, response_data)
-                
-                if bvn_or_pin == True:
-                    return redirect(reverse('payment:enter_otp'))
+            responsehtml = response_data['responsehtml']
+            decoded_responsehtml = flw.util.decryptData(responsehtml)
+            #return render(request, )
+            return HttpResponse(decoded_responsehtml)
         else:
-            responseMessage = verify_json['status']
-            messages.error(request, '%s' %responseMessage)
+            
+            #print 'verify_json: ',verify_json
+            
+            
+            if response_data.has_key('responsemessage'):
+                responseMessage         = response_data['responsemessage']
+                messages.error(request, '%s' %responseMessage)
+            
+            if verify_json['status'] != 'error':
+                
+                response_data.update({'country': payload['country']})
+                #print 'response_data: ',response_data
+                responsecode = response_data['responsecode']
+                if responsecode == '02':
+                    keys_list = ['otptransactionidentifier', 'transactionreference', 'country']
+                    keep_values(request, keys_list, response_data)
+                    
+                    if bvn_or_pin == True:
+                        return redirect(reverse('payment:char_enter_otp'))
+            else:
+                responseMessage = verify_json['status']
+                messages.error(request, '%s' %responseMessage)
             
     months = []
     for i in range(1, 13):
@@ -73,12 +97,18 @@ def initiate(request):
     for i in range(6):
         years.append(str(2016+i))
     
-    return render(request, 'initiate.html', {'months': months, 'years': years})
+    return render(request, 'charge_card/initiate.html', {'months': months, 'years': years})
     
 
 
 def enter_otp(request):
-    
+    rG = request.GET
+    if rG.has_key('resp'):
+        
+        response_data = ast.literal_eval(rG['resp'])
+        responsemessage = response_data['responsemessage']
+        messages.error(request, '%s' %responsemessage)
+        return redirect(reverse('payment:char_initiate'))
     # if request.method == 'POST':
     #     data = request.POST.copy()
     #     
@@ -92,9 +122,9 @@ def enter_otp(request):
     if request.session.has_key('otptransactionidentifier'):# and request.session.has_key('verifyUsing'):
         context = {'otpTransactionIdentifier': request.session['otptransactionidentifier'],
                    'country': request.session['country']}
-        return render(request, 'enter_otp.html', context)
+        return render(request, 'charge_card/enter_otp.html', context)
     
-    return redirect(reverse('payment:initiate'))
+    return redirect(reverse('payment:char_initiate'))
 
 def transaction_result(request):
     context = {}
@@ -122,7 +152,7 @@ def transaction_result(request):
         # 
         # print 'validate_json: ',validate_json
         
-        context.update({'data': response_data})
+        context.update({'data': response_data, 'charge_card': 'charge_card'})
                 
         # '''Clear saved values from session'''
         #keys_list = ['api_key', 'merchant_key', 'verifyUsing', 'country', 'transactionReference', 'bvn']
@@ -131,5 +161,5 @@ def transaction_result(request):
         
         return render(request, 'result.html', context)
     
-    return redirect(reverse('payment:initiate'))
+    return redirect(reverse('payment:char_initiate'))
     

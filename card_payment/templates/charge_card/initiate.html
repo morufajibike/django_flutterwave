@@ -1,0 +1,136 @@
+{% extends 'base.html' %}    
+        
+{% block page_title %}
+    <title>Flutterwave Card Payment</title>
+{% endblock page_title %}
+
+{% block container_content %}
+ 
+<form class="form-signin" method="POST" action="" id="enter_bvn">
+{% csrf_token %}
+
+    {% include 'header.html' with header_msg='Charge Card' %}
+    
+    {% for msg in messages %}
+    <div class="alert alert-danger">
+      <h5 class="text-center">{{ msg }}</h5>
+    </div>
+    {% endfor %}
+    
+    
+    <div class="row-fluid">
+        <label>Card Number</label>
+        <input type="text" name="cardNumber" class="form-control" value="4842508225502547">
+    </div>
+  
+    <div class="row row-fluid">
+        <div class="form-group col-xs-4">
+            <label>Expiry Month</label>
+            <select name="expiryMonth" class="form-control">
+                <option value="10">10</option>
+                <!--{% for val in months %}
+                  <option value="{{ val }}">{{ val }}</option>
+                {% endfor %}-->
+            </select>
+        </div>
+        
+        <div class="form-group col-xs-4">
+            <label>Expiry Year</label>
+            <select name="expiryYear" class="form-control">
+                <option value="18">18</option>
+               <!--{% for val in years %}
+                  <option value="{{ val|slice:'2:' }}">{{ val }}</option>
+                {% endfor %}-->
+            </select>
+        </div>
+        <div class="form-group col-xs-4">
+            <label>CVV2/CVC</label>
+            <input type="number" name="cvv" class="form-control" value="136">
+        </div>
+    </div>
+    
+    <div class="row row-fluid">
+        <div class="form-group col-xs-4">
+              <label>Country</label>
+              <select name="country" class="form-control">
+                  <option value="NG">Nigeria</option>
+                  <option value="US">United States</option>
+                  <option value="UK">United Kingdom</option>
+              </select>
+       </div>
+       <div class="form-group col-xs-4">
+              <label>Currency</label>
+              <select name="currency" class="form-control">
+                  <option value="NGN">Naira</option>
+                  <option value="USD">Dollars</option>
+                  <option value="GBP">Pounds</option>
+              </select>
+       </div>
+        <div class="form-group col-xs-4">
+            <label>Amount</label>
+            <input type="number" name="amount" class="form-control" value="2000">
+        </div>
+    </div>
+    
+    <div class="row row-fluid">
+        <div class="form-group col-xs-4">
+          <label>Auth. Method</label>
+          <select name="authModel" id="id_authModel" class="form-control">
+              <option value="">Select Auth Method</option>
+              <option value="BVN">BVN</option>
+              <option value="PIN">PIN</option>
+              <option value="NOAUTH">NOAUTH</option>
+              <option value="VBVSECURECODE">VBVSECURECODE</option>
+          </select>
+       </div>
+       
+       <div class="form-group col-xs-8 hidden" id="bvn_div">
+          <label>BVN Number</label>
+          <input type="text" name="bvn" class="form-control" value="12345678901">
+       </div>
+       
+       <div class="form-group col-xs-4 hidden" id="pin_div">
+            <label>PIN</label>
+            <input type="number" name="pin" class="form-control">
+        </div>
+        
+    </div>
+  
+        
+    <div class="row-fluid">
+        <label>Transaction Description</label>
+        <input type="text" name="narration" class="form-control" value="Card Testing" readonly>
+    </div>
+    
+    <div class="row-fluid" style="padding-top: 20px;">
+        <button class="btn btn-lg btn-primary btn-block" type="submit">Submit</button>
+    </div>
+    
+    <div class="row-fluid">
+      {{ decoded_responsehtml }}
+    </div>
+    
+</form>
+
+{% endblock container_content %}
+
+
+{% block script %}
+  <script>
+    $('#id_authModel').on('change', function(){
+        var optionSelected = $('option:selected', this);
+        var option_val = optionSelected.val();
+        if (option_val == 'PIN') {
+            $('#pin_div').removeClass('hidden');
+            $('#bvn_div').addClass('hidden');
+        }else if(option_val == 'BVN'){
+            $('#pin_div').addClass('hidden');
+            $('#bvn_div').removeClass('hidden');
+        }else{
+            $('#pin_div').addClass('hidden');
+            $('#bvn_div').addClass('hidden');
+        }
+    })
+  </script>
+{% endblock %}
+

@@ -9,7 +9,7 @@
 <form class="form-signin" method="POST" action="" id="enter_bvn">
 {% csrf_token %}
 
-    <h3 class="form-signin-heading text-center">Flutterwave Card Payment</h3>
+    {% include 'header.html' with header_msg='Tokenize Card' %}
     
     {% for msg in messages %}
     <div class="alert alert-danger">
@@ -53,18 +53,26 @@
         <div class="form-group col-xs-4">
               <label>Country</label>
               <select name="country" class="form-control">
-                  <option value="NGN">Nigeria</option>
+                  <option value="NG">Nigeria</option>
                   <option value="US">United States</option>
                   <option value="UK">United Kingdom</option>
               </select>
        </div>
-       <div class="form-group col-xs-4">
+       <!--<div class="form-group col-xs-4">
               <label>Currency</label>
               <select name="currency" class="form-control">
                   <option value="NGN">Naira</option>
                   <option value="USD">Dollars</option>
                   <option value="GBP">Pounds</option>
               </select>
+       </div>-->
+       <div class="form-group col-xs-4">
+          <label>Auth. Method</label>
+          <select name="authModel" class="form-control">
+              <option value="BVN">BVN</option>
+              <option value="PIN">PIN</option>
+              <option value="NOAUTH">NOAUTH</option>
+          </select>
        </div>
         <div class="form-group col-xs-4">
             <label>Amount</label>
@@ -73,19 +81,19 @@
     </div>
     
     <div class="row row-fluid">
-        <div class="form-group col-xs-4">
-          <label>Auth. Method</label>
-          <select name="authModel" class="form-control">
-              <option value="BVN">BVN</option>
-              <option value="PIN">PIN</option>
-              <option value="NOAUTH">NOAUTH</option>
-              <option value="VBVSECURECODE">VBVSECURECODE</option>
-          </select>
-       </div>
-       <div class="form-group col-xs-8">
+      <div class="form-group col-xs-8">
           <label>BVN Number</label>
           <input type="text" name="bvn" class="form-control" value="12345678901">
        </div>
+      
+        <div class="form-group col-xs-4">
+          <label>Validate Option</label>
+          <select name="validateOption" class="form-control">
+              <option value="SMS">SMS</option>
+              <option value="Voice">Voice</option>
+          </select>
+       </div>
+       
         
     </div>
   

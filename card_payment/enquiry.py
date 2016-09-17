@@ -3,6 +3,10 @@ from flutterwave import Flutterwave
 from django.http import HttpResponse, JsonResponse
 from django.core.urlresolvers import reverse
 from django.contrib import messages
+import requests, hashlib, base64
+from Crypto.Cipher import DES3
+
+
 from django.conf import settings
 
 api_key         = settings.FLUTTERWAVE_API_KEY
@@ -22,7 +26,8 @@ def clear_values_from_session(request, keys_list):
             del request.session[key]
             
             
-def initiate(request):
+            
+def initiate_bal_enquiry(request):
     '''Verify'''
     
     if request.method == "POST":
@@ -30,18 +35,14 @@ def initiate(request):
         print 'posting to verify card'
                 
         payload = request.POST.copy()
-        payload.update({"customerID": "cust1471629671",
-                    'responseUrl': reverse('payment:tok_initiate')})
+        #payload.update({"customerID": "cust1471629671",
+        #            'responseUrl': reverse('payment:tok_initiate')})
         payload.pop('csrfmiddlewaretoken')
-        
-        bvn_or_pin = False
-        if payload['authModel'] == ('BVN' or 'PIN'):
-            bvn_or_pin = True
         
         flw                     = initialize_flw(api_key, merchant_key)
         #print 'data: ',data
         
-        verify                  = flw.card.tokenize(payload)
+        verify                  = flw.card.balanceEnquiry(payload)
         verify_json             = verify.json()
         
         #print 'verify_json: ',verify_json
@@ -74,63 +75,51 @@ def initiate(request):
     for i in range(6):
         years.append(str(2016+i))
     
-    return render(request, 'tokenize_card/initiate.html', {'months': months, 'years': years})
+    return render(request, 'enquiry/initiate.html', {'months': months, 'years': years})
     
 
 
-def enter_otp(request):
+def fetch_available_banks():
+    # endpoint = "http://staging1flutterwave.co:8080/pwc/rest/fw/banks/"
+    # 
+    # response = requests.post(endpoint).json()
+    flw                     = initialize_flw(api_key, merchant_key)
+    response                   = flw.bank.list()
+    return response.json()
     
-    # if request.method == 'POST':
-    #     data = request.POST.copy()
-    #     
-    #     flw                     = initialize_flw(api_key, merchant_key)
-    #     
-    #     verify                  = flw.card.validate(data)
-    #     verify_json             = verify.json()
-    #     
-    #     
-    # else:
-    if request.session.has_key('otptransactionidentifier'):# and request.session.has_key('verifyUsing'):
-        context = {'otpTransactionIdentifier': request.session['otptransactionidentifier'],
-                   'country': request.session['country']}
-        return render(request, 'tokenize_card/enter_otp.html', context)
-    
-    return redirect(reverse('payment:tok_initiate'))
+def get_available_banks(request):
+    response = fetch_available_banks()
+    #if response['status'] == 'success':
+                
+    return render(request, 'result.html', {'data': response['data'].iteritems(), 'bank_enquiry': 'bank_enquiry',
+                                               })
+        
+    #return JsonResponse({'response': response['status']})
 
-def transaction_result(request):
-    context = {}
-    '''Validate Transaction'''
+
+def account_enquiry(request):
     if request.method == "POST":
         data = request.POST.copy()
+        data.pop('csrfmiddlewaretoken')
+        data.update({'merchantid': merchant_key})
         
         flw                     = initialize_flw(api_key, merchant_key)
-        
-        verify                  = flw.card.validate(data)
-        verify_json             = verify.json()
-        
-        #otp = request.POST.get('otp')
-        response_data = verify_json['data']
-        
-        #responseMessage = response_data['responsemessage']
-        #messages.error(request, '%s' %responseMessage)
-            
-        # '''Retrieve saved values from session'''
-        # api_key, merchant_key, verifyUsing, country, transactionReference, bvn  = retrieve_values(request)           
-        # 
-        # flw                                     = initialize_flw(api_key, merchant_key)
-        # validate                                = flw.bvn.validate(bvn, otp, transactionReference, country)
-        # validate_json                           = validate.json()
-        # 
-        # print 'validate_json: ',validate_json
-        
-        context.update({'data': response_data})
-                
-        # '''Clear saved values from session'''
-        #keys_list = ['api_key', 'merchant_key', 'verifyUsing', 'country', 'transactionReference', 'bvn']
-        #clear_values_from_session(request, keys_list)
+        #print 'data: ',data
 
-        
-        return render(request, 'tokenize_card/result.html', context)
-    
-    return redirect(reverse('payment:tok_initiate'))
-    
+        verify                  = flw.account.lookup(data)
+        response             = verify.json()
+        # endpoint = 'http://staging1flutterwave.co:8080/pwc/rest/pay/resolveaccount'
+        # rp = request.POST.copy()
+        # rp.pop('csrfmiddlewaretoken')
+        # 
+        # payload = {'destbankcode': encryption(api_key, rp['destbankcode']),
+        #            'recipientaccount': encryption(api_key, rp['recipientaccount']),
+        #            'merchantid': merchant_key}
+        # 
+        # print 'payload: ',payload
+        # response = requests.post(endpoint, json=payload).json()
+                
+        return JsonResponse({'response': response})
+            
+    response = fetch_available_banks()
+    return render(request, 'enquiry/account_enquiry.html', {'data': response['data'].iteritems()})
