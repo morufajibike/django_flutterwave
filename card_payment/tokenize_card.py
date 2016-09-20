@@ -3,23 +3,10 @@ from flutterwave import Flutterwave
 from django.http import HttpResponse, JsonResponse
 from django.core.urlresolvers import reverse
 from django.contrib import messages
-from django.conf import settings
 
-api_key         = settings.FLUTTERWAVE_API_KEY
-merchant_key    = settings.FLUTTERWAVE_MERCHANT_KEY
+from general import flw, api_key, merchant_key, generate_ref_no, keep_values, clear_values_from_session, \
+                    get_countries
 
-def initialize_flw(api_key, merchant_key):    
-    flw = Flutterwave(api_key, merchant_key, {"debug": True})
-    return flw
-
-def keep_values(request, keys_list, data_dict):
-    for key in keys_list:
-        request.session[key] = data_dict[key]
-
-def clear_values_from_session(request, keys_list):
-    for key in keys_list:
-        if request.session.has_key(key):
-            del request.session[key]
             
             
 def initiate(request):
@@ -38,7 +25,6 @@ def initiate(request):
         if payload['authModel'] == ('BVN' or 'PIN'):
             bvn_or_pin = True
         
-        flw                     = initialize_flw(api_key, merchant_key)
         #print 'data: ',data
         
         verify                  = flw.card.tokenize(payload)
@@ -61,7 +47,8 @@ def initiate(request):
                 keep_values(request, keys_list, response_data)
                 
                 if bvn_or_pin == True:
-                    return redirect(reverse('payment:tok_enter_otp'))
+                    #return redirect(reverse('payment:tok_enter_otp'))
+                    return redirect(reverse('enter_otp'))
         else:
             responseMessage = verify_json['status']
             messages.error(request, '%s' %responseMessage)
@@ -74,37 +61,17 @@ def initiate(request):
     for i in range(6):
         years.append(str(2016+i))
     
-    return render(request, 'tokenize_card/initiate.html', {'months': months, 'years': years})
+    return render(request, 'tokenize_card/initiate.html', {'months': months, 'years': years,
+                                                           'countries': get_countries()})
     
 
-
-def enter_otp(request):
-    
-    # if request.method == 'POST':
-    #     data = request.POST.copy()
-    #     
-    #     flw                     = initialize_flw(api_key, merchant_key)
-    #     
-    #     verify                  = flw.card.validate(data)
-    #     verify_json             = verify.json()
-    #     
-    #     
-    # else:
-    if request.session.has_key('otptransactionidentifier'):# and request.session.has_key('verifyUsing'):
-        context = {'otpTransactionIdentifier': request.session['otptransactionidentifier'],
-                   'country': request.session['country']}
-        return render(request, 'tokenize_card/enter_otp.html', context)
-    
-    return redirect(reverse('payment:tok_initiate'))
 
 def transaction_result(request):
     context = {}
     '''Validate Transaction'''
     if request.method == "POST":
         data = request.POST.copy()
-        
-        flw                     = initialize_flw(api_key, merchant_key)
-        
+                
         verify                  = flw.card.validate(data)
         verify_json             = verify.json()
         
@@ -123,14 +90,14 @@ def transaction_result(request):
         # 
         # print 'validate_json: ',validate_json
         
-        context.update({'data': response_data})
+        context.update({'data': response_data, 'tokenize_card': 'tokenize_card'})
                 
-        # '''Clear saved values from session'''
-        #keys_list = ['api_key', 'merchant_key', 'verifyUsing', 'country', 'transactionReference', 'bvn']
-        #clear_values_from_session(request, keys_list)
+        '''Clear saved values from session'''
+        keys_list = ['otptransactionidentifier', 'transactionreference', 'country']
+        clear_values_from_session(request, keys_list)
 
         
-        return render(request, 'tokenize_card/result.html', context)
+        return render(request, 'result.html', context)
     
     return redirect(reverse('payment:tok_initiate'))
     

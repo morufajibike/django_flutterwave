@@ -7,13 +7,13 @@ import enquiry
 
 charge_card_urls = [
     url(r'^initiate', charge_card.initiate, name="char_initiate"),
-    url(r'^enter-otp', charge_card.enter_otp, name="char_enter_otp"),
+    #url(r'^enter-otp', charge_card.enter_otp, name="char_enter_otp"),
     url(r'^transaction-result', charge_card.transaction_result, name="char_transaction_result"),
 ]
 
 tokenize_card_urls = [
     url(r'^initiate', tokenize_card.initiate, name="tok_initiate"),
-    url(r'^enter-otp', tokenize_card.enter_otp, name="tok_enter_otp"),
+    #url(r'^enter-otp', tokenize_card.enter_otp, name="tok_enter_otp"),
     url(r'^transaction-result', tokenize_card.transaction_result, name="tok_transaction_result"),
 ]
 
@@ -27,5 +27,4 @@ urlpatterns = [
     url(r'^charge-card/', include(charge_card_urls)),
     url(r'^tokenize-card/', include(tokenize_card_urls)),
     url(r'^enquiry/', include(enquiry_urls)),
-    
 ]

@@ -3,24 +3,11 @@ from flutterwave import Flutterwave
 from django.http import HttpResponse, JsonResponse
 from django.core.urlresolvers import reverse
 from django.contrib import messages
-from django.conf import settings
 import ast
 
-api_key         = settings.FLUTTERWAVE_API_KEY
-merchant_key    = settings.FLUTTERWAVE_MERCHANT_KEY
+from general import flw, api_key, merchant_key, generate_ref_no, keep_values, clear_values_from_session, \
+                    get_countries, get_currencies
 
-def initialize_flw(api_key, merchant_key):    
-    flw = Flutterwave(api_key, merchant_key, {"debug": True})
-    return flw
-
-def keep_values(request, keys_list, data_dict):
-    for key in keys_list:
-        request.session[key] = data_dict[key]
-
-def clear_values_from_session(request, keys_list):
-    for key in keys_list:
-        if request.session.has_key(key):
-            del request.session[key]
             
             
 def initiate(request):
@@ -48,9 +35,8 @@ def initiate(request):
             if payload['authModel'] == 'PIN':
                 payload.pop('bvn')
             
-            payload.update({'responseUrl':  request.build_absolute_uri(reverse('payment:char_enter_otp'))})
+            payload.update({'responseUrl':  request.build_absolute_uri(reverse('enter_otp'))})
         
-        flw                     = initialize_flw(api_key, merchant_key)
         #print 'payload: ',payload
         
         verify                  = flw.card.charge(payload)
@@ -72,7 +58,11 @@ def initiate(request):
             
             if response_data.has_key('responsemessage'):
                 responseMessage         = response_data['responsemessage']
-                messages.error(request, '%s' %responseMessage)
+                
+                if 'Success' in responseMessage:
+                    messages.success(request, '%s' %responseMessage)
+                else:
+                    messages.error(request, '%s' %responseMessage)
             
             if verify_json['status'] != 'error':
                 
@@ -84,7 +74,7 @@ def initiate(request):
                     keep_values(request, keys_list, response_data)
                     
                     if bvn_or_pin == True:
-                        return redirect(reverse('payment:char_enter_otp'))
+                        return redirect(reverse('enter_otp'))
             else:
                 responseMessage = verify_json['status']
                 messages.error(request, '%s' %responseMessage)
@@ -97,34 +87,10 @@ def initiate(request):
     for i in range(6):
         years.append(str(2016+i))
     
-    return render(request, 'charge_card/initiate.html', {'months': months, 'years': years})
+    return render(request, 'charge_card/initiate.html', {'months': months, 'years': years,
+                                                         'countries': get_countries, 'currencies': get_currencies})
     
 
-
-def enter_otp(request):
-    rG = request.GET
-    if rG.has_key('resp'):
-        
-        response_data = ast.literal_eval(rG['resp'])
-        responsemessage = response_data['responsemessage']
-        messages.error(request, '%s' %responsemessage)
-        return redirect(reverse('payment:char_initiate'))
-    # if request.method == 'POST':
-    #     data = request.POST.copy()
-    #     
-    #     flw                     = initialize_flw(api_key, merchant_key)
-    #     
-    #     verify                  = flw.card.validate(data)
-    #     verify_json             = verify.json()
-    #     
-    #     
-    # else:
-    if request.session.has_key('otptransactionidentifier'):# and request.session.has_key('verifyUsing'):
-        context = {'otpTransactionIdentifier': request.session['otptransactionidentifier'],
-                   'country': request.session['country']}
-        return render(request, 'charge_card/enter_otp.html', context)
-    
-    return redirect(reverse('payment:char_initiate'))
 
 def transaction_result(request):
     context = {}
@@ -132,7 +98,6 @@ def transaction_result(request):
     if request.method == "POST":
         data = request.POST.copy()
         
-        flw                     = initialize_flw(api_key, merchant_key)
         
         verify                  = flw.card.validate(data)
         verify_json             = verify.json()
@@ -154,9 +119,9 @@ def transaction_result(request):
         
         context.update({'data': response_data, 'charge_card': 'charge_card'})
                 
-        # '''Clear saved values from session'''
-        #keys_list = ['api_key', 'merchant_key', 'verifyUsing', 'country', 'transactionReference', 'bvn']
-        #clear_values_from_session(request, keys_list)
+        '''Clear saved values from session'''
+        keys_list = ['otptransactionidentifier', 'transactionreference', 'country']
+        clear_values_from_session(request, keys_list)
 
         
         return render(request, 'result.html', context)

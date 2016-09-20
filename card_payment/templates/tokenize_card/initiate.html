@@ -52,10 +52,11 @@
     <div class="row row-fluid">
         <div class="form-group col-xs-4">
               <label>Country</label>
-              <select name="country" class="form-control">
-                  <option value="NG">Nigeria</option>
-                  <option value="US">United States</option>
-                  <option value="UK">United Kingdom</option>
+              <select name="country" class="form-control" required>
+                  <option value="">Select</option>
+                  {% for country in countries %}
+                    <option value="{{ country.code }}">{{ country.name }}</option>
+                  {% endfor %}
               </select>
        </div>
        <!--<div class="form-group col-xs-4">

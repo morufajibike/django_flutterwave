@@ -10,7 +10,7 @@
   
     <!--<h3 class="form-signin-heading text-center"></h3>-->
         
-    {% include 'header.html' with header_msg='Account Enquiry' header_msg_2='Please enter the account number you want to verify its name' %}
+    {% include 'header.html' with header_msg='Account Enquiry' header_msg_2='Please enter the account number you want to verify its information' %}
 
     {% for msg in messages %}
     <div class="alert alert-danger">
@@ -35,7 +35,7 @@
     <div class="row-fluid">
         <label>Country</label>
         <select name="country" class="form-control">
-            <option value="NGN">Nigeria</option>
+            <option value="NG">Nigeria</option>
             <option value="US">United States</option>
             <option value="UK">United Kingdom</option>
         </select>

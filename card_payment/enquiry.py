@@ -6,15 +6,9 @@ from django.contrib import messages
 import requests, hashlib, base64
 from Crypto.Cipher import DES3
 
+from general import flw, api_key, merchant_key, generate_ref_no, keep_values, clear_values_from_session,\
+                    get_countries, get_currencies
 
-from django.conf import settings
-
-api_key         = settings.FLUTTERWAVE_API_KEY
-merchant_key    = settings.FLUTTERWAVE_MERCHANT_KEY
-
-def initialize_flw(api_key, merchant_key):    
-    flw = Flutterwave(api_key, merchant_key, {"debug": True})
-    return flw
 
 def keep_values(request, keys_list, data_dict):
     for key in keys_list:
@@ -39,7 +33,7 @@ def initiate_bal_enquiry(request):
         #            'responseUrl': reverse('payment:tok_initiate')})
         payload.pop('csrfmiddlewaretoken')
         
-        flw                     = initialize_flw(api_key, merchant_key)
+        
         #print 'data: ',data
         
         verify                  = flw.card.balanceEnquiry(payload)
@@ -50,19 +44,17 @@ def initiate_bal_enquiry(request):
         
         if response_data.has_key('responsemessage'):
             responseMessage         = response_data['responsemessage']
+            if responseMessage == None:
+                response_data.update({'country': payload['country'], 'otptransactionidentifier': payload['transactionRef'],
+                                      'transactionRef': payload['transactionRef']})
+                #print 'response_data: ',response_data
+                keys_list = ['otptransactionidentifier', 'transactionRef', 'country']
+                keep_values(request, keys_list, response_data)
+                return redirect(reverse('enter_otp'))
+                
+                
             messages.error(request, '%s' %responseMessage)
         
-        if verify_json['status'] != 'error':
-            
-            response_data.update({'country': payload['country']})
-            #print 'response_data: ',response_data
-            responsecode = response_data['responsecode']
-            if responsecode == '02':
-                keys_list = ['otptransactionidentifier', 'transactionreference', 'country']
-                keep_values(request, keys_list, response_data)
-                
-                if bvn_or_pin == True:
-                    return redirect(reverse('payment:tok_enter_otp'))
         else:
             responseMessage = verify_json['status']
             messages.error(request, '%s' %responseMessage)
@@ -75,15 +67,18 @@ def initiate_bal_enquiry(request):
     for i in range(6):
         years.append(str(2016+i))
     
-    return render(request, 'enquiry/initiate.html', {'months': months, 'years': years})
+    transactionRef = generate_ref_no()
+    return render(request, 'enquiry/initiate.html', {'months': months, 'years': years, 'transactionRef': transactionRef,
+                                                     'countries': get_countries()})
     
+    
+
 
 
 def fetch_available_banks():
     # endpoint = "http://staging1flutterwave.co:8080/pwc/rest/fw/banks/"
     # 
     # response = requests.post(endpoint).json()
-    flw                     = initialize_flw(api_key, merchant_key)
     response                   = flw.bank.list()
     return response.json()
     
@@ -103,7 +98,6 @@ def account_enquiry(request):
         data.pop('csrfmiddlewaretoken')
         data.update({'merchantid': merchant_key})
         
-        flw                     = initialize_flw(api_key, merchant_key)
         #print 'data: ',data
 
         verify                  = flw.account.lookup(data)
